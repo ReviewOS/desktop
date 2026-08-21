@@ -46,10 +46,22 @@ export function createApi(store: RepoStore, session: Session): ApiHandler {
    */
   function repoFrom(url: URL): string {
     const requested = url.searchParams.get('repo')
-    const resolved = store.resolve(requested)
-    if (!resolved)
-      throw new Error(requested ? `${requested} is not an open repository.` : 'No repository is open.')
-    return resolved
+
+    // No `repo` given means "the one the window is showing", which is the
+    // session's. Asking the store instead only worked while exactly one
+    // repository had ever been opened — `resolve(null)` returns null as soon
+    // as there are two, so every mutation started failing with "No repository
+    // is open" the moment a second one was added.
+    if (!requested)
+      return required(session.state.repo, 'No repository is open.')
+
+    return required(store.resolve(requested), `${requested} is not an open repository.`)
+  }
+
+  function required(value: string | null, message: string): string {
+    if (!value)
+      throw new Error(message)
+    return value
   }
 
   return async function handle(request: Request): Promise<Response> {
