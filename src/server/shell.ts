@@ -248,11 +248,12 @@ export interface ShellProps {
   overview: RepoOverview | null
   /** Shown beside the traffic lights, the way Dia names the current space. */
   repoName: string
-  /** Inline custom properties that tint the window behind the card. */
+  /**
+   * Inline custom properties that tint the window behind the card, and the
+   * gradient it is painted with. On the element rather than in a stylesheet
+   * because stx does not expand `{{ }}` inside `<style>`.
+   */
   windowStyle: string
-  /** The panel's own gradient, so the window behind the card draws the same curve. */
-  windowWash: string
-  windowWashDark: string
 }
 
 /**
@@ -398,16 +399,26 @@ export function buildShell(input: ShellInput): ShellProps {
   // The window behind the card takes the active space's colour, resolved by
   // the same code the panel uses. Computing it here rather than approximating
   // it in CSS is what keeps the two from drifting apart when either changes.
-  const windowStyle = activeIndex === -1
-    ? ''
-    : spaceTintVars(resolveSpaceTint(tintFor(activeIndex)))
+  // Always emitted, even with no repository open. An empty string would leave
+  // the wash properties undefined and the body unpainted, and a CSS-side
+  // fallback would mean writing the gradient stops a second time.
+  const tint = spaceTintVars(resolveSpaceTint(activeIndex === -1 ? undefined : tintFor(activeIndex)))
 
   // Built by the component library rather than written out here. The wash is
   // not a plain fade — it reaches half strength a third of the way down and
   // flattens before the bottom — and a second copy of those stops in this
   // file would drift from the panel's the first time either was tuned.
-  const windowWash = spaceWashGradient('var(--stx-space-light-from, #f2f0ec)', 'var(--stx-space-light-to, #e6e3dd)')
-  const windowWashDark = spaceWashGradient('var(--stx-space-dark-from, #17171b)', 'var(--stx-space-dark-to, #0e0e11)')
+  //
+  // Carried as custom properties on the element rather than interpolated into
+  // a stylesheet: stx does not expand `{{ }}` inside a `<style>` block, and it
+  // does not complain either — the marker is served verbatim, the declaration
+  // is invalid, and the body simply has no background. Which is exactly what
+  // shipped: the window's white backing showed through the toolbar strip, and
+  // in light appearance white against a pale wash hid it.
+  const wash = [
+    `--window-wash: ${spaceWashGradient('var(--stx-space-light-from, #f2f0ec)', 'var(--stx-space-light-to, #e6e3dd)')}`,
+    `--window-wash-dark: ${spaceWashGradient('var(--stx-space-dark-from, #17171b)', 'var(--stx-space-dark-to, #0e0e11)')}`,
+  ].join('; ')
 
   // The overview replaces the empty pane, so it is built only when the pane
   // would otherwise be empty.
@@ -458,8 +469,6 @@ export function buildShell(input: ShellInput): ShellProps {
     hasRepo: session.state.repo !== null,
     overview,
     repoName,
-    windowStyle,
-    windowWash,
-    windowWashDark,
+    windowStyle: `${tint}; ${wash}`,
   }
 }

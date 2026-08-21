@@ -62,7 +62,10 @@ async function gather(session: Session, store: RepoStore) {
     worktrees(repo),
     remotes(repo),
     lastFetch(repo),
-    session.state.tab === 'history' ? log(repo, { limit: 200 }) : Promise.resolve([]),
+    // A handful even on the Changes tab: the overview that fills the diff pane
+    // when nothing is selected lists the most recent commits, and a six-entry
+    // `git log` is far cheaper than a second round trip to fetch them later.
+    log(repo, { limit: session.state.tab === 'history' ? 200 : 6 }),
   ])
 
   return {
@@ -196,7 +199,7 @@ export async function startServer(options: { port?: number, cwd?: string } = {})
     const shell = await props()
     const [list, diffHtml] = await Promise.all([
       renderPane('ListPane', { tab: shell.tab, items: shell.listItems, summary: shell.summary, hasRepo: shell.hasRepo }),
-      renderPane('DiffPane', { files: shell.diffFiles }),
+      renderPane('DiffPane', { files: shell.diffFiles, overview: shell.overview }),
     ])
     return Response.json({ list, diff: diffHtml, title: shell.title, toolbar: shell.toolbar })
   }
@@ -211,7 +214,7 @@ export async function startServer(options: { port?: number, cwd?: string } = {})
       }))
     }
     if (name === 'diff')
-      return html(await renderPane('DiffPane', { files: shell.diffFiles }))
+      return html(await renderPane('DiffPane', { files: shell.diffFiles, overview: shell.overview }))
 
     return new Response('Not found', { status: 404 })
   }

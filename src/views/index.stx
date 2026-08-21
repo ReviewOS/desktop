@@ -24,8 +24,6 @@ export const hasRepo = shell.hasRepo
 export const overview = shell.overview
 export const repoName = shell.repoName
 export const windowStyle = shell.windowStyle
-export const windowWash = shell.windowWash
-export const windowWashDark = shell.windowWashDark
 </script>
 
 <!DOCTYPE html>
@@ -73,15 +71,22 @@ export const windowWashDark = shell.windowWashDark
       it reaches half strength a third of the way down and flattens before the
       bottom — and a hand-written copy of those stops would drift from the
       panel's the first time either was tuned.
+
+      It arrives as a custom property on `<body>` rather than interpolated into
+      this block: stx does not expand double-brace interpolation inside a
+      `<style>` element, and does not warn about it either — the marker is
+      served verbatim and the declaration is silently invalid. (Spelled out in
+      words here rather than shown, so the render test can stay strict about
+      finding no markers in the served page.)
     */
     body {
-      background: {{ windowWash }};
+      background: var(--window-wash);
       color: var(--stx-space-light-ink, #2c2a28);
     }
 
     @media (prefers-color-scheme: dark) {
       body {
-        background: {{ windowWashDark }};
+        background: var(--window-wash-dark);
         color: var(--stx-space-dark-ink, #ededf0);
       }
     }
