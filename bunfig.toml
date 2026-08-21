@@ -1,0 +1,12 @@
+# `.stx` files are imported directly by the server, so the plugin has to be
+# registered before any of them is resolved — preload runs early enough,
+# a plugin passed to Bun.build does not.
+preload = ["bun-plugin-stx"]
+
+[install]
+# better-dx and the stx packages expect a flat tree; a nested one resolves a
+# second copy of @stacksjs/stx and the component registry silently splits.
+linker = "hoisted"
+
+[test]
+root = "test"

@@ -1,0 +1,35 @@
+{
+  "name": "@reviewos/desktop",
+  "type": "module",
+  "version": "0.1.0",
+  "private": true,
+  "description": "A native desktop client for ReviewOS — review, stage and commit without leaving the machine.",
+  "author": "Chris Breuer <chris@stacksjs.org>",
+  "license": "MIT",
+  "homepage": "https://github.com/ReviewOS/desktop#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ReviewOS/desktop.git"
+  },
+  "bugs": {
+    "url": "https://github.com/ReviewOS/desktop/issues"
+  },
+  "scripts": {
+    "dev": "bun run src/main.ts --dev",
+    "start": "bun run src/main.ts",
+    "serve": "bun run src/main.ts --headless",
+    "test": "bun test",
+    "lint": "bunx --bun pickier lint .",
+    "lint:fix": "bunx --bun pickier lint . --fix",
+    "typecheck": "bun tsc --noEmit"
+  },
+  "dependencies": {
+    "@stacksjs/components": "^0.2.201",
+    "@stacksjs/desktop": "^0.2.201",
+    "@stacksjs/stx": "^0.2.201",
+    "bun-plugin-stx": "^0.2.201"
+  },
+  "devDependencies": {
+    "@types/bun": "^1.3.6"
+  }
+}

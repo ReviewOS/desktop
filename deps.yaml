@@ -1,0 +1,11 @@
+# The toolchain this app is built and run with. `pantry install` reads it.
+#
+# bun is pinned exactly rather than with a caret: a caret resolves through
+# pantry's `v1` symlink, so a minor release would be picked up silently on the
+# next install, and bun's lockfile format has changed across minors before.
+dependencies:
+  bun.com: 1.4.0
+  # The native webview. The app talks to the `craft` binary on PATH — see
+  # craft's own contract about never probing build-tree paths at runtime.
+  craft-native.org: ^0.0.37
+  git: ^2.47.0

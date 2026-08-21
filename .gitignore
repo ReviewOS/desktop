@@ -1,0 +1,5 @@
+node_modules/
+pantry/
+dist/
+*.log
+.DS_Store
