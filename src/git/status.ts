@@ -90,9 +90,16 @@ export async function status(repo: string): Promise<RepoStatus> {
     }
 
     if (record.startsWith('u ')) {
-      // Unmerged. The path is the last space-separated field.
-      const path = record.slice(record.indexOf(' ', 2) + 1).split(' ').slice(9).join(' ')
-      result.files.push({ path: path || record.split(' ').pop() || '', unstaged: 'conflicted', submodule: false })
+      // `u <XY> <sub> <m1> <m2> <m3> <mW> <h1> <h2> <h3> <path>` — the path is
+      // field 10, and it is the only field that can contain spaces, so the
+      // rest is rejoined rather than taken as one token. Splitting on the last
+      // space instead loses everything before it in `a file with spaces.txt`.
+      const fields = record.split(' ')
+      result.files.push({
+        path: fields.slice(10).join(' '),
+        unstaged: 'conflicted',
+        submodule: fields[2] !== 'N...',
+      })
       continue
     }
 

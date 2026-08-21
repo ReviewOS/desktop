@@ -90,6 +90,44 @@ describe('status', () => {
     const state = await status(repo)
     expect(state.files.some(file => file.path === 'with space.ts')).toBe(true)
   })
+
+  it('reads a conflicted path containing spaces in full', async () => {
+    // An unmerged record puts the path in field 10, and it is the only field
+    // that can contain spaces. Taking the last space-separated token instead
+    // reported `a merged file.txt` as `file.txt`, so selecting the row asked
+    // git about a path that does not exist and the diff came back empty.
+    const conflict = mkdtempSync(join(tmpdir(), 'reviewos-git-conflict-'))
+    try {
+      await git(conflict, ['init', '--quiet', '--initial-branch=main'])
+      await git(conflict, ['config', 'user.email', 'test@example.com'])
+      await git(conflict, ['config', 'user.name', 'Test'])
+      await git(conflict, ['config', 'commit.gpgsign', 'false'])
+
+      const name = 'a merged file.txt'
+      await Bun.write(join(conflict, name), 'base\n')
+      await git(conflict, ['add', '-A'])
+      await git(conflict, ['commit', '--quiet', '-m', 'base'])
+
+      await git(conflict, ['checkout', '--quiet', '-b', 'other'])
+      await Bun.write(join(conflict, name), 'other\n')
+      await git(conflict, ['commit', '--quiet', '-am', 'other'])
+
+      await git(conflict, ['checkout', '--quiet', 'main'])
+      await Bun.write(join(conflict, name), 'main\n')
+      await git(conflict, ['commit', '--quiet', '-am', 'main'])
+
+      // Merging conflicting edits is the point; a non-zero exit is expected.
+      await git(conflict, ['merge', 'other'], { allowFailure: true })
+
+      const state = await status(conflict)
+      const conflicted = state.files.filter(file => file.unstaged === 'conflicted')
+      expect(conflicted.map(file => file.path)).toEqual([name])
+    }
+    finally {
+      if (conflict.includes('reviewos-git-conflict-'))
+        rmSync(conflict, { recursive: true, force: true })
+    }
+  })
 })
 
 describe('diff', () => {
