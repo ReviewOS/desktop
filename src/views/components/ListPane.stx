@@ -1,0 +1,104 @@
+<script server>
+// The middle pane: changed files, or commits, depending on the tab — plus the
+// commit box that only the Changes tab has.
+export const tab = $props.tab || 'changes'
+export const items = $props.items || []
+export const summary = $props.summary || { count: 0, branch: '', clean: true }
+export const hasRepo = $props.hasRepo ?? false
+
+export const isChanges = tab === 'changes'
+export const commitLabel = summary.count === 1
+  ? `Commit 1 file to ${summary.branch}`
+  : `Commit ${summary.count} files to ${summary.branch}`
+</script>
+
+<div class="flex h-full min-h-0 flex-col">
+  <!-- Tabs -->
+  <div class="flex shrink-0 border-b border-black/8 dark:border-white/8">
+    <button
+      type="button"
+      data-tab="changes"
+      class="flex-1 border-b-2 px-3 py-2.5 text-[13px] font-medium transition-colors {{ isChanges ? 'border-[#0088ff] text-[#0088ff]' : 'border-transparent opacity-60 hover:opacity-100' }}"
+    >Changes</button>
+    <button
+      type="button"
+      data-tab="history"
+      class="flex-1 border-b-2 px-3 py-2.5 text-[13px] font-medium transition-colors {{ isChanges ? 'border-transparent opacity-60 hover:opacity-100' : 'border-[#0088ff] text-[#0088ff]' }}"
+    >History</button>
+  </div>
+
+  @if (!hasRepo)
+    <div class="flex flex-1 flex-col items-center justify-center gap-3 px-8 text-center">
+      <span class="i-f7-cube-box h-8 w-8 opacity-25"></span>
+      <p class="text-[13px] opacity-55">No repository open.</p>
+      <button type="button" data-action="add-repo" class="rounded-[7px] bg-[#0088ff] px-3 py-1.5 text-[12px] font-medium text-white hover:brightness-110">Add a repository</button>
+    </div>
+  @elseif (items.length === 0)
+    <div class="flex flex-1 flex-col items-center justify-center gap-2 px-8 text-center">
+      <span class="i-f7-checkmark-alt-circle h-7 w-7 text-[#34c759] opacity-70"></span>
+      <p class="text-[13px] opacity-55">{{ isChanges ? 'No local changes.' : 'No commits yet.' }}</p>
+    </div>
+  @else
+    <!-- Rows -->
+    <div class="min-h-0 flex-1 overflow-y-auto">
+      @foreach (items as item)
+        <div
+          data-row="{{ item.id }}"
+          class="group flex w-full items-center gap-2 px-2.5 py-[7px] text-left {{ item.selected ? 'bg-[#0088ff] text-white' : 'hover:bg-black/4 dark:hover:bg-white/6' }}"
+        >
+          @if (isChanges)
+            <!--
+              A real checkbox, not a styled div: it is the control the whole
+              staging model runs through, so it has to be focusable, keyboard-
+              operable and readable by assistive tech without extra wiring.
+            -->
+            <input
+              type="checkbox"
+              data-check="{{ item.id }}"
+              {{ item.checked ? 'checked' : '' }}
+              class="h-[13px] w-[13px] shrink-0 accent-[#0088ff]"
+              aria-label="Include {{ item.label }} in the commit"
+            >
+          @endif
+
+          <span class="{{ item.icon }} h-[15px] w-[15px] shrink-0 {{ item.selected ? 'text-white' : '' }}" data-tint="{{ item.iconColor || '' }}"></span>
+
+          <span class="flex min-w-0 flex-1 flex-col leading-tight">
+            <span class="truncate text-[13px]">{{ item.label }}</span>
+            @if (item.detail)
+              <span class="truncate text-[11px] {{ item.selected ? 'text-white/70' : 'opacity-50' }}">{{ item.detail }}</span>
+            @endif
+          </span>
+
+          @if (item.badge)
+            <span class="shrink-0 font-mono text-[11px] font-semibold {{ item.selected ? 'text-white/80' : 'opacity-55' }}">{{ item.badge }}</span>
+          @endif
+        </div>
+      @endforeach
+    </div>
+
+    @if (isChanges)
+      <!-- Commit box -->
+      <form data-commit-form class="shrink-0 border-t border-black/8 p-2.5 dark:border-white/8">
+        <input
+          name="summary"
+          required
+          placeholder="Summary (required)"
+          class="w-full rounded-[7px] border border-black/10 bg-white px-2.5 py-1.5 text-[13px] outline-none placeholder:opacity-45 focus:border-[#0088ff] dark:border-white/12 dark:bg-white/6"
+        >
+        <textarea
+          name="description"
+          rows="3"
+          placeholder="Description"
+          class="mt-1.5 w-full resize-none rounded-[7px] border border-black/10 bg-white px-2.5 py-1.5 text-[13px] outline-none placeholder:opacity-45 focus:border-[#0088ff] dark:border-white/12 dark:bg-white/6"
+        ></textarea>
+        <button
+          type="submit"
+          {{ summary.count === 0 ? 'disabled' : '' }}
+          class="mt-2 w-full rounded-[7px] bg-[#0088ff] py-[7px] text-[13px] font-medium text-white transition hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-40"
+        >{{ summary.count === 0 ? 'Nothing selected to commit' : commitLabel }}</button>
+        <p data-commit-error class="mt-1.5 hidden text-[12px] text-[#ff383c]"></p>
+      </form>
+    @endif
+  @endif
+</div>

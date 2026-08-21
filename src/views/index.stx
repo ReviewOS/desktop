@@ -1,0 +1,99 @@
+<script server>
+// The shell, rendered from the repository's actual state.
+//
+// The sidebar is server-rendered rather than assembled by the client so the
+// window opens at its real size with its real contents — a native app that
+// paints an empty frame and fills it a beat later reads as a web page in a
+// window, which is the exact impression this is trying to avoid.
+//
+// Panes, left to right: the Arc sidebar (repositories are *spaces*, the way
+// Arc treats them — each with its own tint), the list (changed files or
+// commits), and the diff.
+// The server computes these once per request and parks the getter on
+// globalThis, because a `<script server>` block has no access to the request
+// or to anything the server holds. One window, one process — so there is
+// exactly one session for it to read.
+const shell = await globalThis.__reviewosProps()
+
+export const title = shell.title
+export const spaces = shell.spaces
+export const activeSpace = shell.activeSpace
+export const toolbar = shell.toolbar
+export const tab = shell.tab
+export const listItems = shell.listItems
+export const diffFiles = shell.diffFiles
+export const summary = shell.summary
+export const hasRepo = shell.hasRepo
+</script>
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{{ title }}</title>
+</head>
+
+<body class="h-screen overflow-hidden bg-[#f7f5f1] text-[#2c2a28] antialiased dark:bg-[#141416] dark:text-[#ededf0]">
+  <div class="flex h-screen">
+    <Sidebar
+      :spaces="spaces"
+      :space="activeSpace"
+      theme="arc"
+      width="260"
+      placement="static"
+      :followSystemAppearance="false"
+      spacePersistKey="reviewos.space"
+    >
+      <template #header>
+        <SidebarHeader
+          theme="arc"
+          showWindowControls
+          showSearch
+          searchPlaceholder="Filter"
+          :actions="[
+            { id: 'add-repo', icon: 'i-f7-plus', label: 'Add repository' },
+          ]"
+        />
+      </template>
+
+      <template #footer>
+        <SidebarFooter
+          theme="arc"
+          :actions="[
+            { id: 'fetch', icon: 'i-f7-arrow-2-circlepath', label: 'Fetch origin' },
+            { id: 'branches', icon: 'i-f7-arrow-branch', label: 'Branches' },
+            { id: 'settings', icon: 'i-f7-gear', label: 'Settings' },
+          ]"
+        />
+      </template>
+    </Sidebar>
+
+    <div class="flex min-w-0 flex-1 flex-col">
+      <Toolbar :items="toolbar" />
+
+      <div class="flex min-h-0 flex-1">
+        <!--
+          The two hosts are the app's only fixed DOM. Their contents are
+          replaced wholesale with server-rendered fragments on every
+          interaction, so nothing inside them may be addressed by the client —
+          it would not survive the first swap. The hosts themselves carry the
+          sizing so a fragment never has to know how wide its pane is.
+        -->
+        <section
+          id="list-pane"
+          class="flex w-[380px] shrink-0 flex-col border-r border-black/8 bg-[#fbfaf8] dark:border-white/8 dark:bg-[#191919]"
+        >
+          <ListPane :tab="tab" :items="listItems" :summary="summary" :hasRepo="hasRepo" />
+        </section>
+
+        <section id="diff-pane" class="min-w-0 flex-1 overflow-auto bg-[#fdfcfa] dark:bg-[#141416]">
+          <DiffPane :files="diffFiles" />
+        </section>
+      </div>
+    </div>
+  </div>
+
+  <script type="module" src="/app.js"></script>
+</body>
+</html>

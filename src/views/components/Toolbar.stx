@@ -1,0 +1,43 @@
+<script server>
+// GitHub Desktop's chrome: a row of segmented panels, each a small gray label
+// over a bold value.
+export const items = $props.items || []
+</script>
+
+<!--
+  `data-drag` marks the region the window moves by. With the titlebar hidden
+  there is no system bar to grab, so the app has to nominate its own drag
+  surface — and every control inside it opts back out with `data-no-drag`, or
+  a click on a dropdown would start a window drag instead of opening it.
+
+  `shrink-0` with a fixed height, not `flex-1`: in a column flex container a
+  `flex-1` header grows to take half the window.
+-->
+<header
+  data-drag
+  class="flex h-[52px] shrink-0 items-stretch border-b border-black/8 bg-[#f2f0ec]/80 backdrop-blur-xl dark:border-white/8 dark:bg-[#1c1c1e]/80"
+>
+  @foreach (items as item)
+    <button
+      type="button"
+      data-no-drag
+      data-toolbar="{{ item.id }}"
+      class="group flex min-w-0 flex-1 items-center gap-2.5 border-r border-black/8 px-3.5 text-left transition-colors last:border-r-0 hover:bg-black/4 active:bg-black/8 dark:border-white/8 dark:hover:bg-white/6 dark:active:bg-white/10"
+    >
+      <span class="{{ item.icon }} h-[17px] w-[17px] shrink-0 opacity-60"></span>
+
+      <span class="flex min-w-0 flex-col leading-tight">
+        <span class="truncate text-[10px] font-medium uppercase tracking-[0.06em] opacity-50">{{ item.label }}</span>
+        <span class="truncate text-[13px] font-semibold">{{ item.value }}</span>
+      </span>
+
+      @if (item.detail)
+        <span class="ml-auto hidden shrink-0 text-[11px] opacity-45 xl:block">{{ item.detail }}</span>
+      @endif
+
+      @if (item.menu)
+        <span class="i-f7-chevron-down ml-auto h-[9px] w-[9px] shrink-0 opacity-40"></span>
+      @endif
+    </button>
+  @endforeach
+</header>
