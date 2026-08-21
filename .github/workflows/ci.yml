@@ -13,26 +13,29 @@ jobs:
   check:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
 
       # The toolchain comes from deps.yaml, so the version CI runs is the
-      # version a developer runs — not whatever the runner image happens to
-      # ship. craft is a darwin/GTK binary and is not needed here: nothing in
-      # the suite opens a window.
-      - name: Install pantry
-        run: curl -fsSL https://pantry.sh/install | bash
+      # version a developer runs — not whatever the runner image ships. craft
+      # is a platform binary and is not installed here: nothing in the suite
+      # opens a window.
+      - name: Setup Pantry (provides bun, git)
+        uses: pantry-pm/pantry/packages/action@main
 
-      - name: Install toolchain and dependencies
-        run: pantry install
+      # `pantry env` prints the exports that put the installed toolchain on
+      # PATH; without eval'ing it, later steps run against whatever the runner
+      # image happens to have.
+      - name: Install dependencies
+        run: eval "$(pantry env | sed -n '/^export /,$p')" && bun install --frozen-lockfile
 
       - name: Build the client bundle
-        run: bun scripts/build-client.ts
+        run: eval "$(pantry env | sed -n '/^export /,$p')" && bun scripts/build-client.ts
 
       - name: Typecheck
-        run: bun tsc --noEmit -p tsconfig.json
+        run: eval "$(pantry env | sed -n '/^export /,$p')" && bun tsc --noEmit -p tsconfig.json
 
       - name: Lint
-        run: bunx --bun pickier lint src scripts test
+        run: eval "$(pantry env | sed -n '/^export /,$p')" && bunx --bun pickier lint src scripts test
 
       - name: Test
-        run: bun test
+        run: eval "$(pantry env | sed -n '/^export /,$p')" && bun test
