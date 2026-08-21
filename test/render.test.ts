@@ -84,6 +84,19 @@ describe('the shell renders', () => {
   })
 })
 
+describe('nothing is left for the client that the client cannot resolve', () => {
+  it('emits no parent-binding attribute referencing a server loop variable', () => {
+    // The loop pre-evaluates a component's `:prop` bindings. When one
+    // evaluated to `undefined` it used to keep the raw `:prop="section.x"`,
+    // which reached the browser as a reactive prop referencing `section` — a
+    // `@foreach` variable that exists only on the server. stx's own hydration
+    // check then logged "expression(s) never evaluated" on every page load.
+    const markup = html.replace(/<script\b[^>]*>[\s\S]*?<\/script>/gi, '')
+    expect(markup.match(/:[a-z-]+="section\.[a-z]+"/g) ?? []).toEqual([])
+    expect(markup).not.toContain('data-stx-parent-bindings')
+  })
+})
+
 describe('the server refuses what it should', () => {
   it('answers only on loopback', async () => {
     // This process can commit to the user's repositories.
