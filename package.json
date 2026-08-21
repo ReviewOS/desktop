@@ -21,7 +21,7 @@
     "test": "bun test",
     "lint": "bunx --bun pickier lint .",
     "lint:fix": "bunx --bun pickier lint . --fix",
-    "typecheck": "bun tsc --noEmit"
+    "typecheck": "bunx --bun tsc --noEmit -p tsconfig.json"
   },
   "dependencies": {
     "@stacksjs/components": "^0.2.201",

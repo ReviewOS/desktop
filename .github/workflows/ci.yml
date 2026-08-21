@@ -32,7 +32,7 @@ jobs:
         run: eval "$(pantry env | sed -n '/^export /,$p')" && bun scripts/build-client.ts
 
       - name: Typecheck
-        run: eval "$(pantry env | sed -n '/^export /,$p')" && bun tsc --noEmit -p tsconfig.json
+        run: eval "$(pantry env | sed -n '/^export /,$p')" && bunx --bun tsc --noEmit -p tsconfig.json
 
       - name: Lint
         run: eval "$(pantry env | sed -n '/^export /,$p')" && bunx --bun pickier lint src scripts test
