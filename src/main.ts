@@ -19,6 +19,9 @@ const { values } = parseArgs({
     port: { type: 'string' },
     // Open a specific repository instead of the one the app was launched from.
     repo: { type: 'string' },
+    // Keep the window above everything else. A review window pinned over the
+    // editor you are fixing the review in is the point.
+    'always-on-top': { type: 'boolean', default: false },
     help: { type: 'boolean', short: 'h', default: false },
   },
   allowPositionals: true,
@@ -35,9 +38,10 @@ ReviewOS Desktop
   bun run serve              start the server only, no window
 
 Options:
-  --port <n>   bind the local server to a fixed port (default: any free port)
-  --headless   do not open a window
-  --dev        enable the webview inspector and hot reload
+  --port <n>       bind the local server to a fixed port (default: any free port)
+  --headless       do not open a window
+  --always-on-top  keep the window above other applications
+  --dev            enable the webview inspector and hot reload
 `)
   process.exit(0)
 }
@@ -74,6 +78,7 @@ async function main(): Promise<void> {
     // follows the system rather than being pinned either way.
     darkMode: false,
     resizable: true,
+    alwaysOnTop: values['always-on-top'],
     devTools: values.dev,
     hotReload: values.dev,
   })
