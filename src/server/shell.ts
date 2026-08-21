@@ -11,7 +11,7 @@ import type { ChangedFile, RepoStatus } from '../git/status'
 import type { Branch, Remote, Worktree } from '../git/repo'
 import type { StoredRepo } from './store'
 import type { Session, Tab } from './session'
-import { resolveSpaceTint, spaceTintVars } from '@stacksjs/components'
+import { resolveSpaceTint, spaceTintVars, spaceWashGradient } from '@stacksjs/components'
 
 /** A row in the middle pane. Changed files and commits share the shape. */
 export interface ListRow {
@@ -250,6 +250,9 @@ export interface ShellProps {
   repoName: string
   /** Inline custom properties that tint the window behind the card. */
   windowStyle: string
+  /** The panel's own gradient, so the window behind the card draws the same curve. */
+  windowWash: string
+  windowWashDark: string
 }
 
 /**
@@ -399,6 +402,13 @@ export function buildShell(input: ShellInput): ShellProps {
     ? ''
     : spaceTintVars(resolveSpaceTint(tintFor(activeIndex)))
 
+  // Built by the component library rather than written out here. The wash is
+  // not a plain fade — it reaches half strength a third of the way down and
+  // flattens before the bottom — and a second copy of those stops in this
+  // file would drift from the panel's the first time either was tuned.
+  const windowWash = spaceWashGradient('var(--stx-space-light-from, #f2f0ec)', 'var(--stx-space-light-to, #e6e3dd)')
+  const windowWashDark = spaceWashGradient('var(--stx-space-dark-from, #17171b)', 'var(--stx-space-dark-to, #0e0e11)')
+
   // The overview replaces the empty pane, so it is built only when the pane
   // would otherwise be empty.
   const nothingSelected = diffFiles.length === 0 && session.state.repo !== null
@@ -449,5 +459,7 @@ export function buildShell(input: ShellInput): ShellProps {
     overview,
     repoName,
     windowStyle,
+    windowWash,
+    windowWashDark,
   }
 }

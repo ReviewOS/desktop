@@ -24,6 +24,8 @@ export const hasRepo = shell.hasRepo
 export const overview = shell.overview
 export const repoName = shell.repoName
 export const windowStyle = shell.windowStyle
+export const windowWash = shell.windowWash
+export const windowWashDark = shell.windowWashDark
 </script>
 
 <!DOCTYPE html>
@@ -65,15 +67,21 @@ export const windowStyle = shell.windowStyle
       One gradient and no highlight over the top, matching how the panel paints
       itself: a sheen at the crown bleaches the end that carries the colour and
       turns the fade into a bulge.
+
+      The gradient itself comes from `spaceWashGradient`, the same function the
+      sidebar's panel is painted with, because the wash is not a plain fade —
+      it reaches half strength a third of the way down and flattens before the
+      bottom — and a hand-written copy of those stops would drift from the
+      panel's the first time either was tuned.
     */
     body {
-      background: linear-gradient(180deg, var(--stx-space-light-from, #f2f0ec) 0%, var(--stx-space-light-to, #e6e3dd) 100%);
+      background: {{ windowWash }};
       color: var(--stx-space-light-ink, #2c2a28);
     }
 
     @media (prefers-color-scheme: dark) {
       body {
-        background: linear-gradient(180deg, var(--stx-space-dark-from, #17171b) 0%, var(--stx-space-dark-to, #0e0e11) 100%);
+        background: {{ windowWashDark }};
         color: var(--stx-space-dark-ink, #ededf0);
       }
     }
