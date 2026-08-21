@@ -11,6 +11,7 @@ import type { ChangedFile, RepoStatus } from '../git/status'
 import type { Branch, Remote, Worktree } from '../git/repo'
 import type { StoredRepo } from './store'
 import type { Session, Tab } from './session'
+import { resolveSpaceTint, spaceTintVars } from '@stacksjs/components'
 
 /** A row in the middle pane. Changed files and commits share the shape. */
 export interface ListRow {
@@ -39,6 +40,27 @@ export interface ToolbarItem {
   detail?: string
   /** Whether the control opens a menu. */
   menu: boolean
+}
+
+/**
+ * What the diff pane shows when nothing is selected.
+ *
+ * An empty pane is most of the window, and "select a file" is a caption on a
+ * void. The repository's own state is the thing you would look at next anyway.
+ */
+export interface RepoOverview {
+  branch: string
+  upstream?: string
+  ahead: number
+  behind: number
+  detached: boolean
+  changed: number
+  staged: number
+  /** Newest commits, for the "what happened here recently" glance. */
+  recent: Array<{ hash: string, short: string, subject: string, author: string, when: string }>
+  /** Fetch recency, already phrased. */
+  fetched: string
+  remote?: string
 }
 
 export interface CommitSummary {
@@ -222,6 +244,12 @@ export interface ShellProps {
   diffFiles: FileDiff[]
   summary: CommitSummary
   hasRepo: boolean
+  /** Present only when nothing is selected, so the pane has something to say. */
+  overview: RepoOverview | null
+  /** Shown beside the traffic lights, the way Dia names the current space. */
+  repoName: string
+  /** Inline custom properties that tint the window behind the card. */
+  windowStyle: string
 }
 
 /**
@@ -232,13 +260,19 @@ export interface ShellProps {
  * switching repositories is a swipe rather than a dropdown, and the panel's
  * tint tells you which one you are in before you read anything.
  */
+/**
+ * A fixed rotation rather than a hash of the path: a stable, obviously distinct
+ * set of hues beats a hash that can put two adjacent repositories on
+ * near-identical colours.
+ */
+const TINTS = ['blue', 'green', 'purple', 'orange', 'teal', 'pink', 'indigo', 'red']
+
+export function tintFor(index: number): string {
+  return TINTS[index % TINTS.length]
+}
+
 export function repoSpaces(input: ShellInput): unknown[] {
   const { session, repos, status, branches: branchList } = input
-
-  // A fixed rotation rather than a hash of the path: a stable, obviously
-  // distinct set of hues beats a hash that can put two adjacent repos on
-  // near-identical colors.
-  const tints = ['blue', 'green', 'purple', 'orange', 'teal', 'pink', 'indigo', 'red']
 
   return repos.map((repo, index) => {
     const active = repo.root === session.state.repo
@@ -252,7 +286,7 @@ export function repoSpaces(input: ShellInput): unknown[] {
             id: 'tab:changes',
             label: 'Changes',
             icon: 'i-f7-doc-on-doc',
-            iconColor: tints[index % tints.length],
+            iconColor: tintFor(index),
             count: status.files.length || undefined,
             active: session.state.tab === 'changes',
           },
@@ -260,7 +294,7 @@ export function repoSpaces(input: ShellInput): unknown[] {
             id: 'tab:history',
             label: 'History',
             icon: 'i-f7-clock',
-            iconColor: tints[index % tints.length],
+            iconColor: tintFor(index),
             active: session.state.tab === 'history',
           },
         ],
@@ -292,12 +326,56 @@ export function repoSpaces(input: ShellInput): unknown[] {
     return {
       id: repo.root,
       label: repo.name,
+      // The header already names the repository beside the traffic lights,
+      // which is where Dia puts it. The label stays for the switcher rail's
+      // tooltip and the panel's accessible name.
+      showTitle: false,
       icon: 'i-f7-cube-box-fill',
-      tint: tints[index % tints.length],
+      tint: tintFor(index),
+      // Arc's favourites grid, which Dia keeps: a block of square tiles above
+      // the rows. They are shortcuts rather than list entries — the sidebar
+      // deliberately leaves them out of selection and arrow-key navigation —
+      // so this is where the actions that are not *places* belong.
+      pinned: active ? repoShortcuts(input) : [],
       sections,
       action: { id: `open:${repo.root}`, label: active ? 'New Branch' : `Open ${repo.name}` },
     }
   })
+}
+
+/**
+ * The pinned grid for the repository in view.
+ *
+ * Four tiles, because the grid is four columns wide and a short row of half-lit
+ * tiles reads as something failing to load. Each is an action rather than a
+ * destination, and each carries live state where it has any — the fetch tile
+ * shows what the branch's position actually calls for.
+ */
+export function repoShortcuts(input: ShellInput): unknown[] {
+  const { status, remotes } = input
+  const ahead = status.ahead > 0
+  const behind = status.behind > 0
+
+  // Each tile carries a colour. Dia's grid is a wall of favicons, so every
+  // tile is a different hue and the block reads as content; four grey glyphs in
+  // four grey boxes read as four empty boxes, however well proportioned.
+  return [
+    {
+      id: 'shortcut:fetch',
+      label: remotes.length === 0
+        ? 'No remote'
+        : ahead
+          ? `Push ${status.ahead}`
+          : behind ? `Pull ${status.behind}` : 'Fetch',
+      icon: ahead
+        ? 'i-f7-arrow-up-circle-fill'
+        : behind ? 'i-f7-arrow-down-circle-fill' : 'i-f7-arrow-2-circlepath',
+      iconColor: remotes.length === 0 ? 'gray' : ahead || behind ? 'blue' : 'teal',
+    },
+    { id: 'shortcut:branch', label: 'New branch', icon: 'i-f7-arrow-branch', iconColor: 'purple' },
+    { id: 'shortcut:stash', label: 'Stash', icon: 'i-f7-tray-arrow-down', iconColor: 'orange' },
+    { id: 'shortcut:reveal', label: 'Reveal in Finder', icon: 'i-f7-folder-fill', iconColor: 'blue' },
+  ]
 }
 
 export function buildShell(input: ShellInput): ShellProps {
@@ -311,7 +389,39 @@ export function buildShell(input: ShellInput): ShellProps {
     ? status.files.map(file => fileRow(file, file.path === session.state.path, staged.has(file.path)))
     : commits.map(commit => commitRow(commit, commit.hash === session.state.commit))
 
-  const repoName = input.repos.find(repo => repo.root === session.state.repo)?.name ?? 'ReviewOS'
+  const activeIndex = input.repos.findIndex(repo => repo.root === session.state.repo)
+  const repoName = input.repos[activeIndex]?.name ?? 'ReviewOS'
+
+  // The window behind the card takes the active space's colour, resolved by
+  // the same code the panel uses. Computing it here rather than approximating
+  // it in CSS is what keeps the two from drifting apart when either changes.
+  const windowStyle = activeIndex === -1
+    ? ''
+    : spaceTintVars(resolveSpaceTint(tintFor(activeIndex)))
+
+  // The overview replaces the empty pane, so it is built only when the pane
+  // would otherwise be empty.
+  const nothingSelected = diffFiles.length === 0 && session.state.repo !== null
+  const overview: RepoOverview | null = nothingSelected
+    ? {
+        branch: status.branch,
+        upstream: status.upstream,
+        ahead: status.ahead,
+        behind: status.behind,
+        detached: status.detached,
+        changed: status.files.length,
+        staged: staged.size,
+        recent: input.commits.slice(0, 6).map(entry => ({
+          hash: entry.hash,
+          short: entry.short,
+          subject: entry.subject,
+          author: entry.authorName,
+          when: relativeTime(new Date(entry.date)),
+        })),
+        fetched: input.lastFetch ? `Fetched ${relativeTime(input.lastFetch)}` : 'Never fetched',
+        remote: input.remotes[0]?.name,
+      }
+    : null
 
   return {
     title: session.state.repo ? `${repoName} — ReviewOS` : 'ReviewOS',
@@ -336,5 +446,8 @@ export function buildShell(input: ShellInput): ShellProps {
       clean: status.files.length === 0,
     },
     hasRepo: session.state.repo !== null,
+    overview,
+    repoName,
+    windowStyle,
   }
 }

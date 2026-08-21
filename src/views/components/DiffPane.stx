@@ -4,39 +4,69 @@
 // file" and "where in the new file" at the same time.
 export const files = $props.files || []
 export const isEmpty = files.length === 0
+
+// What fills the pane when nothing is selected. An empty pane is most of the
+// window, and "select a file" is a caption on a void — the repository's own
+// state is what you would look at next anyway.
+export const overview = $props.overview || null
+
+// Row tints are kept low — 7%, not the 12–15% that reads as a highlighter —
+// and the signal is carried by a saturated stripe down the gutter edge
+// instead. A page of heavily-washed rows is harder to read than the code it
+// contains, which defeats the point.
+//
+// The tint goes on the CELLS rather than the row, because the gutters are
+// sticky against horizontal scrolling and a sticky cell paints over whatever
+// its row put behind it. Giving every cell the same tint keeps the stripe
+// continuous when the code scrolls under the gutters.
+// Opaque, not translucent, for the same reason: a sticky cell over a
+// translucent one shows the code sliding underneath it.
+export const addCell = 'bg-[#eaf7ee] dark:bg-[#16281c]'
+export const deleteCell = 'bg-[#fdecec] dark:bg-[#2c1719]'
+export const plainCell = 'bg-white dark:bg-[#1b1b1d]'
+
+// Gutters pin to the left edge so a long line scrolls under them rather than
+// taking the line numbers off-screen with it — losing the numbers is what makes
+// a wide diff hard to talk about.
+export const gutterCell = 'sticky w-[46px] select-none px-[8px] text-right align-top text-[10.5px] tabular-nums opacity-30'
 </script>
 
 <div class="h-full">
-  @if (isEmpty)
-    <div class="flex h-full flex-col items-center justify-center gap-2 text-center">
-      <span class="i-f7-doc-text h-7 w-7 opacity-20"></span>
-      <p class="text-[13px] opacity-45">Select a file to see its changes.</p>
+  @if (isEmpty && overview)
+    <Overview :state="overview" />
+  @elseif (isEmpty)
+    <div class="flex h-full flex-col items-center justify-center gap-[8px] text-center">
+      <span class="i-f7-doc-text h-[26px] w-[26px] opacity-[0.18]"></span>
+      <p class="text-[12.5px] opacity-40">Select a file to see its changes.</p>
     </div>
   @else
     @foreach (files as file)
-      <div class="border-b border-black/8 last:border-b-0 dark:border-white/8">
+      <div>
         <!--
           Sticky so the filename stays visible while scrolling a long diff —
           losing track of which file you are reading is the single most common
           complaint about long patches.
         -->
-        <div class="sticky top-0 z-10 flex items-center gap-2 border-b border-black/8 bg-[#f2f0ec]/92 px-3 py-2 backdrop-blur-xl dark:border-white/8 dark:bg-[#1c1c1e]/92">
-          <span class="i-f7-doc-text h-[15px] w-[15px] shrink-0 opacity-50"></span>
-          <span class="min-w-0 flex-1 truncate font-mono text-[12px]">
+        <div class="sticky top-0 z-10 flex items-center gap-[8px] border-b border-black/[0.07] bg-white/85 px-[13px] py-[8px] backdrop-blur-xl dark:border-white/[0.07] dark:bg-[#1b1b1d]/85">
+          <span class="i-f7-doc-text h-[13px] w-[13px] shrink-0 opacity-40"></span>
+
+          <span class="min-w-0 flex-1 truncate font-mono text-[11.5px]">
             @if (file.oldPath)
-              <span class="opacity-45">{{ file.oldPath }}</span>
-              <span class="mx-1 opacity-35">→</span>
+              <span class="opacity-40">{{ file.oldPath }}</span>
+              <span class="mx-[4px] opacity-30">→</span>
             @endif
+            <!-- The directory recedes; the filename is what you are looking for. -->
             {{ file.path }}
           </span>
-          <span class="shrink-0 font-mono text-[11px] text-[#34c759]">+{{ file.additions }}</span>
-          <span class="shrink-0 font-mono text-[11px] text-[#ff383c]">−{{ file.deletions }}</span>
+
+          <span class="shrink-0 rounded-[4px] bg-[#34c759]/12 px-[5px] py-[1px] font-mono text-[10.5px] font-semibold text-[#248a3d] dark:bg-[#34c759]/18 dark:text-[#5cd97b]">+{{ file.additions }}</span>
+          <span class="shrink-0 rounded-[4px] bg-[#ff383c]/12 px-[5px] py-[1px] font-mono text-[10.5px] font-semibold text-[#c9252c] dark:bg-[#ff383c]/20 dark:text-[#ff7a7d]">−{{ file.deletions }}</span>
         </div>
 
         @if (file.binary)
-          <p class="px-4 py-6 text-center text-[12px] opacity-45">Binary file not shown.</p>
+          <p class="px-[16px] py-[26px] text-center text-[11.5px] opacity-40">Binary file not shown.</p>
         @elseif (file.hunks.length === 0)
-          <p class="px-4 py-6 text-center text-[12px] opacity-45">
+          <p class="px-[16px] py-[26px] text-center text-[11.5px] opacity-40">
             @if (file.modeChange)
               Mode changed from {{ file.modeChange.from }} to {{ file.modeChange.to }}.
             @else
@@ -44,25 +74,42 @@ export const isEmpty = files.length === 0
             @endif
           </p>
         @else
-          <table class="w-full border-collapse font-mono text-[12px] leading-[18px]">
-            @foreach (file.hunks as hunk)
-              <tr>
-                <td colspan="3" class="bg-[#0088ff]/8 px-3 py-1 text-[11px] text-[#0088ff]/80 select-all">{{ hunk.header }}</td>
-              </tr>
-              @foreach (hunk.lines as line)
-                <tr class="{{ line.kind === 'add' ? 'bg-[#34c759]/12' : line.kind === 'delete' ? 'bg-[#ff383c]/12' : '' }}">
-                  <!--
-                    `user-select: none` on the gutters: without it, copying a
-                    diff out of the pane takes the line numbers with it, which
-                    is the reason pasted patches so often fail to apply.
-                  -->
-                  <td class="w-[52px] select-none border-r border-black/6 px-2 text-right align-top tabular-nums opacity-35 dark:border-white/8">{{ line.oldNumber ?? '' }}</td>
-                  <td class="w-[52px] select-none border-r border-black/6 px-2 text-right align-top tabular-nums opacity-35 dark:border-white/8">{{ line.newNumber ?? '' }}</td>
-                  <td class="whitespace-pre-wrap break-all px-3 align-top {{ line.kind === 'no-newline' ? 'opacity-45 italic' : '' }}"><span class="select-none opacity-40">{{ line.kind === 'add' ? '+' : line.kind === 'delete' ? '−' : line.kind === 'no-newline' ? '\\' : ' ' }}</span> {{ line.text }}</td>
+          <!--
+            Horizontal scroll rather than wrapping. A wrapped diff line breaks
+            the one-row-per-line correspondence the gutters exist to express —
+            and `break-all` split words mid-token, so `repository` came out as
+            `reposit`/`ory`. Every reviewer's tool of reference scrolls here.
+          -->
+          <div class="overflow-x-auto">
+            <table class="w-max min-w-full border-collapse font-mono text-[11.5px] leading-[19px]">
+              @foreach (file.hunks as hunk)
+                <tr>
+                  <td colspan="4" class="select-all border-y border-black/[0.05] bg-[#f6f6f7] px-[13px] py-[4px] text-[10.5px] opacity-45 dark:border-white/[0.06] dark:bg-[#232326]">{{ hunk.header }}</td>
                 </tr>
+                @foreach (hunk.lines as line)
+                  <tr>
+                    <!--
+                      `user-select: none` on the gutters: without it, copying a
+                      diff out of the pane takes the line numbers with it, which
+                      is the reason pasted patches so often fail to apply.
+                    -->
+                    <td class="{{ gutterCell }} left-0 z-[2] {{ line.kind === 'add' ? addCell : line.kind === 'delete' ? deleteCell : plainCell }}">{{ line.oldNumber ?? '' }}</td>
+                    <td class="{{ gutterCell }} left-[46px] z-[2] {{ line.kind === 'add' ? addCell : line.kind === 'delete' ? deleteCell : plainCell }}">{{ line.newNumber ?? '' }}</td>
+
+                    <!--
+                      The stripe, not a background wash, is what carries the
+                      add/delete signal at a glance. It sits in its own column
+                      so it lines up down the whole file regardless of how the
+                      gutters are sized, and it pins with them.
+                    -->
+                    <td class="sticky left-[92px] z-[2] w-[3px] select-none p-0 align-top {{ line.kind === 'add' ? 'bg-[#34c759]' : line.kind === 'delete' ? 'bg-[#ff383c]' : plainCell }}"></td>
+
+                    <td class="whitespace-pre py-0 pl-[10px] pr-[13px] align-top {{ line.kind === 'add' ? addCell : line.kind === 'delete' ? deleteCell : plainCell }} {{ line.kind === 'no-newline' ? 'italic opacity-40' : '' }}"><span class="select-none pr-[4px] {{ line.kind === 'add' ? 'text-[#248a3d] dark:text-[#5cd97b]' : line.kind === 'delete' ? 'text-[#c9252c] dark:text-[#ff7a7d]' : 'opacity-25' }}">{{ line.kind === 'add' ? '+' : line.kind === 'delete' ? '−' : line.kind === 'no-newline' ? '\\' : ' ' }}</span>{{ line.text }}</td>
+                  </tr>
+                @endforeach
               @endforeach
-            @endforeach
-          </table>
+            </table>
+          </div>
         @endif
       </div>
     @endforeach

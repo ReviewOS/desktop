@@ -1,18 +1,15 @@
 <script server>
 // The shell, rendered from the repository's actual state.
 //
-// The sidebar is server-rendered rather than assembled by the client so the
-// window opens at its real size with its real contents — a native app that
-// paints an empty frame and fills it a beat later reads as a web page in a
-// window, which is the exact impression this is trying to avoid.
+// The layout is Dia's, not a browser's: the window itself is tinted with the
+// active space's colour, the sidebar sits on that tint with no border, and the
+// working surface — list and diff — floats above it as one rounded card with a
+// shadow. Nothing is flush to the window edge except the sidebar.
 //
-// Panes, left to right: the Arc sidebar (repositories are *spaces*, the way
-// Arc treats them — each with its own tint), the list (changed files or
-// commits), and the diff.
-// The server computes these once per request and parks the getter on
-// globalThis, because a `<script server>` block has no access to the request
-// or to anything the server holds. One window, one process — so there is
-// exactly one session for it to read.
+// Server-rendered rather than assembled by the client so the window opens at
+// its real size with its real contents. A native app that paints an empty
+// frame and fills it a beat later reads as a web page in a window, which is
+// the exact impression this is trying to avoid.
 const shell = await globalThis.__reviewosProps()
 
 export const title = shell.title
@@ -24,6 +21,9 @@ export const listItems = shell.listItems
 export const diffFiles = shell.diffFiles
 export const summary = shell.summary
 export const hasRepo = shell.hasRepo
+export const overview = shell.overview
+export const repoName = shell.repoName
+export const windowStyle = shell.windowStyle
 </script>
 
 <!DOCTYPE html>
@@ -32,15 +32,97 @@ export const hasRepo = shell.hasRepo
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>{{ title }}</title>
+
+  <!--
+    Appearance, before first paint.
+
+    Crosswind's `dark:` variants are class-based, so a `prefers-color-scheme`
+    media query alone gets you a dark panel with light-mode utilities on top of
+    it — light text on light fills, which is worse than either mode. The
+    sidebar can write this class itself, but it does so on mount, which paints
+    the window in the wrong appearance and then corrects it.
+
+    Inline and synchronous in the head, so the class is on the root element
+    before the body renders and there is no flash. The listener keeps it in
+    step when the system flips while the window is open.
+  -->
+  <script>
+    (() => {
+      const dark = matchMedia('(prefers-color-scheme: dark)')
+      const apply = () => document.documentElement.classList.toggle('dark', dark.matches)
+      apply()
+      dark.addEventListener('change', apply)
+    })()
+  </script>
+
+  <style>
+    /*
+      The window's own surface. `--stx-space-light-*` are the same custom
+      properties the sidebar's space sets, resolved from the same seed colour
+      by the same code — so the tint behind the card is the tint in the panel
+      rather than an approximation of it that drifts when either changes.
+
+      One gradient and no highlight over the top, matching how the panel paints
+      itself: a sheen at the crown bleaches the end that carries the colour and
+      turns the fade into a bulge.
+    */
+    body {
+      background: linear-gradient(180deg, var(--stx-space-light-from, #f2f0ec) 0%, var(--stx-space-light-to, #e6e3dd) 100%);
+      color: var(--stx-space-light-ink, #2c2a28);
+    }
+
+    @media (prefers-color-scheme: dark) {
+      body {
+        background: linear-gradient(180deg, var(--stx-space-dark-from, #17171b) 0%, var(--stx-space-dark-to, #0e0e11) 100%);
+        color: var(--stx-space-dark-ink, #ededf0);
+      }
+    }
+
+    /*
+      The working surface. Two shadows rather than one: a wide soft cast that
+      lifts the card off the tint, and a hairline that keeps its edge crisp
+      against a light background where the cast alone disappears.
+    */
+    .work-surface {
+      box-shadow:
+        0 12px 32px -8px rgba(0, 0, 0, 0.18),
+        0 2px 8px -2px rgba(0, 0, 0, 0.10),
+        0 0 0 0.5px rgba(0, 0, 0, 0.08);
+    }
+
+    @media (prefers-color-scheme: dark) {
+      .work-surface {
+        box-shadow:
+          0 12px 32px -8px rgba(0, 0, 0, 0.55),
+          0 2px 8px -2px rgba(0, 0, 0, 0.35),
+          0 0 0 0.5px rgba(255, 255, 255, 0.09);
+      }
+    }
+
+    /*
+      Scrollbars inside the card. The default macOS overlay bar is fine over a
+      white pane but draws a grey trough over the tinted panel; scoping the
+      styling to the card leaves the sidebar's own scroller alone.
+    */
+    .work-surface ::-webkit-scrollbar { width: 9px; height: 9px }
+    .work-surface ::-webkit-scrollbar-track { background: transparent }
+    .work-surface ::-webkit-scrollbar-thumb {
+      background: rgba(0, 0, 0, 0.16);
+      border: 2px solid transparent;
+      background-clip: content-box;
+      border-radius: 999px;
+    }
+    .work-surface ::-webkit-scrollbar-thumb:hover { background-color: rgba(0, 0, 0, 0.28) }
+  </style>
 </head>
 
-<body class="h-screen overflow-hidden bg-[#f7f5f1] text-[#2c2a28] antialiased dark:bg-[#141416] dark:text-[#ededf0]">
+<body class="h-screen overflow-hidden antialiased" style="{{ windowStyle }}">
   <div class="flex h-screen">
     <Sidebar
       :spaces="spaces"
       :space="activeSpace"
       theme="arc"
-      width="260"
+      width="252"
       placement="static"
       :followSystemAppearance="false"
       spacePersistKey="reviewos.space"
@@ -49,21 +131,9 @@ export const hasRepo = shell.hasRepo
         <SidebarHeader
           theme="arc"
           showWindowControls
-          showSearch
-          searchPlaceholder="Filter"
+          :title="repoName"
           :actions="[
             { id: 'add-repo', icon: 'i-f7-plus', label: 'Add repository' },
-          ]"
-        />
-      </template>
-
-      <template #footer>
-        <SidebarFooter
-          theme="arc"
-          :actions="[
-            { id: 'fetch', icon: 'i-f7-arrow-2-circlepath', label: 'Fetch origin' },
-            { id: 'branches', icon: 'i-f7-arrow-branch', label: 'Branches' },
-            { id: 'settings', icon: 'i-f7-gear', label: 'Settings' },
           ]"
         />
       </template>
@@ -72,24 +142,32 @@ export const hasRepo = shell.hasRepo
     <div class="flex min-w-0 flex-1 flex-col">
       <Toolbar :items="toolbar" />
 
-      <div class="flex min-h-0 flex-1">
-        <!--
-          The two hosts are the app's only fixed DOM. Their contents are
-          replaced wholesale with server-rendered fragments on every
-          interaction, so nothing inside them may be addressed by the client —
-          it would not survive the first swap. The hosts themselves carry the
-          sizing so a fragment never has to know how wide its pane is.
-        -->
-        <section
-          id="list-pane"
-          class="flex w-[380px] shrink-0 flex-col border-r border-black/8 bg-[#fbfaf8] dark:border-white/8 dark:bg-[#191919]"
-        >
-          <ListPane :tab="tab" :items="listItems" :summary="summary" :hasRepo="hasRepo" />
-        </section>
+      <!--
+        The card floats: inset on all four sides, with the tint showing through
+        the gap. That gap is what makes the panel read as the window's own
+        surface rather than as a first column — flush against the sidebar the
+        two become one slab with a line down it.
+      -->
+      <div class="flex min-h-0 flex-1 pb-[10px] pl-[6px] pr-[10px]">
+        <div class="work-surface flex min-h-0 min-w-0 flex-1 overflow-hidden rounded-[11px] bg-white dark:bg-[#1b1b1d]">
+          <!--
+            The list pane sits a shade below the diff. Arc's selection is a
+            white card, and a white card on a white pane is invisible — the
+            ground has to be slightly darker for the raised row to read as
+            raised. It also separates the two panes without leaning on the
+            divider to do all the work.
+          -->
+          <section
+            id="list-pane"
+            class="flex w-[368px] shrink-0 flex-col border-r border-black/[0.07] bg-[#f5f5f4] dark:border-white/[0.07] dark:bg-[#212123]"
+          >
+            <ListPane :tab="tab" :items="listItems" :summary="summary" :hasRepo="hasRepo" />
+          </section>
 
-        <section id="diff-pane" class="min-w-0 flex-1 overflow-auto bg-[#fdfcfa] dark:bg-[#141416]">
-          <DiffPane :files="diffFiles" />
-        </section>
+          <section id="diff-pane" class="min-w-0 flex-1 overflow-auto">
+            <DiffPane :files="diffFiles" :overview="overview" />
+          </section>
+        </div>
       </div>
     </div>
   </div>

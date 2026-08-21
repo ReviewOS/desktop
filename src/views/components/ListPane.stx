@@ -10,42 +10,70 @@ export const isChanges = tab === 'changes'
 export const commitLabel = summary.count === 1
   ? `Commit 1 file to ${summary.branch}`
   : `Commit ${summary.count} files to ${summary.branch}`
+
+// Status letters get a tinted chip rather than plain grey text, because the
+// letter alone is a poor signal at 11px — the colour is what you actually read
+// down a column of thirty rows, and the letter disambiguates it up close.
+// Each tone carries a dark variant. The light inks are deep enough to read on
+// a pale chip and invisible on a dark one, so a single value cannot serve both
+// — a dark-brown 'M' on a near-black row is the letter not being there.
+export const badgeTone = {
+  A: 'bg-[#34c759]/14 text-[#248a3d] dark:bg-[#34c759]/18 dark:text-[#5cd97b]',
+  M: 'bg-[#ff9f0a]/16 text-[#b25e09] dark:bg-[#ff9f0a]/20 dark:text-[#ffbc4d]',
+  D: 'bg-[#ff383c]/14 text-[#c9252c] dark:bg-[#ff383c]/20 dark:text-[#ff7a7d]',
+  R: 'bg-[#0088ff]/14 text-[#0068c9] dark:bg-[#0088ff]/22 dark:text-[#63b5ff]',
+  C: 'bg-[#0088ff]/14 text-[#0068c9] dark:bg-[#0088ff]/22 dark:text-[#63b5ff]',
+  U: 'bg-black/[0.06] text-black/45 dark:bg-white/10 dark:text-white/50',
+  T: 'bg-[#cb30e0]/14 text-[#9c25ab] dark:bg-[#cb30e0]/22 dark:text-[#df85ee]',
+  '!': 'bg-[#ff8d28]/18 text-[#c2620a] dark:bg-[#ff8d28]/22 dark:text-[#ffb066]',
+}
 </script>
 
 <div class="flex h-full min-h-0 flex-col">
-  <!-- Tabs -->
-  <div class="flex shrink-0 border-b border-black/8 dark:border-white/8">
-    <button
-      type="button"
-      data-tab="changes"
-      class="flex-1 border-b-2 px-3 py-2.5 text-[13px] font-medium transition-colors {{ isChanges ? 'border-[#0088ff] text-[#0088ff]' : 'border-transparent opacity-60 hover:opacity-100' }}"
-    >Changes</button>
-    <button
-      type="button"
-      data-tab="history"
-      class="flex-1 border-b-2 px-3 py-2.5 text-[13px] font-medium transition-colors {{ isChanges ? 'border-transparent opacity-60 hover:opacity-100' : 'border-[#0088ff] text-[#0088ff]' }}"
-    >History</button>
+  <!--
+    Tabs. A sliding pill rather than an underline: an underline belongs to a
+    bar that spans the window, and this one sits inside a rounded card where a
+    full-width rule would cut the corner radius off.
+  -->
+  <div class="shrink-0 px-[9px] pb-[7px] pt-[9px]">
+    <div class="flex gap-[2px] rounded-[8px] bg-black/[0.06] p-[2px] dark:bg-white/[0.06]">
+      <button
+        type="button"
+        data-tab="changes"
+        class="flex-1 rounded-[6px] py-[4px] text-[12px] font-medium transition-all duration-150 {{ isChanges ? 'bg-white text-black shadow-[0_1px_2px_rgba(0,0,0,0.10)] dark:bg-white/16 dark:text-white' : 'opacity-55 hover:opacity-85' }}"
+      >Changes</button>
+      <button
+        type="button"
+        data-tab="history"
+        class="flex-1 rounded-[6px] py-[4px] text-[12px] font-medium transition-all duration-150 {{ isChanges ? 'opacity-55 hover:opacity-85' : 'bg-white text-black shadow-[0_1px_2px_rgba(0,0,0,0.10)] dark:bg-white/16 dark:text-white' }}"
+      >History</button>
+    </div>
   </div>
 
   @if (!hasRepo)
-    <div class="flex flex-1 flex-col items-center justify-center gap-3 px-8 text-center">
-      <span class="i-f7-cube-box h-8 w-8 opacity-25"></span>
-      <p class="text-[13px] opacity-55">No repository open.</p>
-      <button type="button" data-action="add-repo" class="rounded-[7px] bg-[#0088ff] px-3 py-1.5 text-[12px] font-medium text-white hover:brightness-110">Add a repository</button>
+    <div class="flex flex-1 flex-col items-center justify-center gap-[10px] px-[32px] text-center">
+      <span class="i-f7-cube-box h-[30px] w-[30px] opacity-20"></span>
+      <p class="text-[12.5px] opacity-50">No repository is open.</p>
+      <button type="button" data-action="add-repo" class="rounded-[8px] bg-[#0088ff] px-[12px] py-[6px] text-[12px] font-medium text-white shadow-[0_1px_3px_rgba(0,136,255,0.35)] transition hover:brightness-[1.08] active:brightness-95">Add a repository</button>
     </div>
   @elseif (items.length === 0)
-    <div class="flex flex-1 flex-col items-center justify-center gap-2 px-8 text-center">
-      <span class="i-f7-checkmark-alt-circle h-7 w-7 text-[#34c759] opacity-70"></span>
-      <p class="text-[13px] opacity-55">{{ isChanges ? 'No local changes.' : 'No commits yet.' }}</p>
+    <div class="flex flex-1 flex-col items-center justify-center gap-[8px] px-[32px] text-center">
+      <span class="i-f7-checkmark-alt-circle-fill h-[26px] w-[26px] text-[#34c759] opacity-60"></span>
+      <p class="text-[12.5px] opacity-50">{{ isChanges ? 'No local changes.' : 'No commits yet.' }}</p>
     </div>
   @else
-    <!-- Rows -->
-    <div class="min-h-0 flex-1 overflow-y-auto">
+    <div class="min-h-0 flex-1 overflow-y-auto px-[7px] pb-[6px]">
       @foreach (items as item)
+        <!--
+          A raised white card for the selected row, not an accent fill. That
+          inversion is Arc's whole selection model, and it is what keeps a long
+          list legible: a saturated blue bar drags the eye away from the diff
+          it is supposed to be introducing.
+        -->
         <div
           data-row="{{ item.id }}"
           data-row-kind="{{ isChanges ? 'file' : 'commit' }}"
-          class="group flex w-full items-center gap-2 px-2.5 py-[7px] text-left {{ item.selected ? 'bg-[#0088ff] text-white' : 'hover:bg-black/4 dark:hover:bg-white/6' }}"
+          class="group mb-[1px] flex w-full items-center gap-[7px] rounded-[7px] px-[7px] py-[5px] text-left transition-[background-color,box-shadow] duration-150 {{ item.selected ? 'bg-white shadow-[0_1px_2.5px_rgba(0,0,0,0.10)] ring-1 ring-black/[0.06] dark:bg-white/[0.13] dark:ring-white/10' : 'hover:bg-black/[0.035] dark:hover:bg-white/[0.06]' }}"
         >
           @if (isChanges)
             <!--
@@ -57,48 +85,53 @@ export const commitLabel = summary.count === 1
               type="checkbox"
               data-check="{{ item.id }}"
               {{ item.checked ? 'checked' : '' }}
-              class="h-[13px] w-[13px] shrink-0 accent-[#0088ff]"
+              class="h-[13px] w-[13px] shrink-0 cursor-pointer accent-[#0088ff]"
               aria-label="Include {{ item.label }} in the commit"
             >
           @endif
 
-          <span class="{{ item.icon }} h-[15px] w-[15px] shrink-0 {{ item.selected ? 'text-white' : '' }}" data-tint="{{ item.iconColor || '' }}"></span>
+          <span class="{{ item.icon }} h-[14px] w-[14px] shrink-0 opacity-50" data-tint="{{ item.iconColor || '' }}"></span>
 
-          <span class="flex min-w-0 flex-1 flex-col leading-tight">
-            <span class="truncate text-[13px]">{{ item.label }}</span>
+          <span class="flex min-w-0 flex-1 flex-col gap-[1px] leading-tight">
+            <span class="truncate text-[12.5px] {{ item.selected ? 'font-medium' : '' }}">{{ item.label }}</span>
             @if (item.detail)
-              <span class="truncate text-[11px] {{ item.selected ? 'text-white/70' : 'opacity-50' }}">{{ item.detail }}</span>
+              <span class="truncate text-[10.5px] opacity-45">{{ item.detail }}</span>
             @endif
           </span>
 
           @if (item.badge)
-            <span class="shrink-0 font-mono text-[11px] font-semibold {{ item.selected ? 'text-white/80' : 'opacity-55' }}">{{ item.badge }}</span>
+            <span class="grid h-[16px] w-[16px] shrink-0 place-items-center rounded-[4px] font-mono text-[9.5px] font-bold {{ badgeTone[item.badge] || 'bg-black/[0.06] text-black/45 dark:bg-white/10 dark:text-white/50' }}">{{ item.badge }}</span>
           @endif
         </div>
       @endforeach
     </div>
 
     @if (isChanges)
-      <!-- Commit box -->
-      <form data-commit-form class="shrink-0 border-t border-black/8 p-2.5 dark:border-white/8">
+      <!--
+        The commit box. Separated by a hairline rather than a full-strength
+        rule, and the fields carry a recessed fill instead of a border — a
+        1px-boxed input is the single strongest tell of a web form in a native
+        window.
+      -->
+      <form data-commit-form class="shrink-0 border-t border-black/[0.07] p-[9px] dark:border-white/[0.07]">
         <input
           name="summary"
           required
           placeholder="Summary (required)"
-          class="w-full rounded-[7px] border border-black/10 bg-white px-2.5 py-1.5 text-[13px] outline-none placeholder:opacity-45 focus:border-[#0088ff] dark:border-white/12 dark:bg-white/6"
+          class="w-full rounded-[7px] border-0 bg-white px-[9px] py-[6px] text-[12.5px] shadow-[inset_0_0_0_1px_rgba(0,0,0,0.07)] outline-none ring-0 transition placeholder:opacity-40 focus:shadow-[inset_0_0_0_1px_rgba(0,0,0,0.07)] focus:ring-2 focus:ring-[#0088ff]/45 dark:bg-white/[0.07] dark:shadow-none"
         >
         <textarea
           name="description"
           rows="3"
           placeholder="Description"
-          class="mt-1.5 w-full resize-none rounded-[7px] border border-black/10 bg-white px-2.5 py-1.5 text-[13px] outline-none placeholder:opacity-45 focus:border-[#0088ff] dark:border-white/12 dark:bg-white/6"
+          class="mt-[5px] w-full resize-none rounded-[7px] border-0 bg-white px-[9px] py-[6px] text-[12.5px] leading-[1.45] shadow-[inset_0_0_0_1px_rgba(0,0,0,0.07)] outline-none ring-0 transition placeholder:opacity-40 focus:shadow-[inset_0_0_0_1px_rgba(0,0,0,0.07)] focus:ring-2 focus:ring-[#0088ff]/45 dark:bg-white/[0.07] dark:shadow-none"
         ></textarea>
         <button
           type="submit"
           {{ summary.count === 0 ? 'disabled' : '' }}
-          class="mt-2 w-full rounded-[7px] bg-[#0088ff] py-[7px] text-[13px] font-medium text-white transition hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-40"
+          class="mt-[7px] w-full rounded-[8px] bg-[#0088ff] py-[7px] text-[12.5px] font-medium text-white shadow-[0_1px_3px_rgba(0,136,255,0.32)] transition hover:brightness-[1.08] active:brightness-95 disabled:cursor-not-allowed disabled:bg-black/[0.08] disabled:text-black/35 disabled:shadow-none dark:disabled:bg-white/10 dark:disabled:text-white/35"
         >{{ summary.count === 0 ? 'Nothing selected to commit' : commitLabel }}</button>
-        <p data-commit-error class="mt-1.5 hidden text-[12px] text-[#ff383c]"></p>
+        <p data-commit-error class="mt-[6px] hidden text-[11.5px] text-[#ff383c]"></p>
       </form>
     @endif
   @endif

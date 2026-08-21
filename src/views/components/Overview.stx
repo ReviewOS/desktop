@@ -1,0 +1,89 @@
+<script server>
+// The repository at a glance, shown where the diff would be when nothing is
+// selected. Three bands: where the branch stands, what is waiting, and what
+// happened recently.
+export const state = $props.state || {}
+
+export const ahead = state.ahead || 0
+export const behind = state.behind || 0
+export const changed = state.changed || 0
+export const staged = state.staged || 0
+export const recent = state.recent || []
+
+export const position = state.detached
+  ? 'Detached HEAD'
+  : !state.upstream
+      ? 'No upstream'
+      : ahead && behind
+        ? `${ahead} ahead, ${behind} behind`
+        : ahead
+          ? `${ahead} ahead of ${state.upstream}`
+          : behind ? `${behind} behind ${state.upstream}` : `Up to date with ${state.upstream}`
+
+// Green only when there is genuinely nothing to do. A branch that is level
+// with its upstream but has twelve uncommitted files is not "clean", and
+// colouring it as though it were is the kind of reassurance that costs trust.
+export const settled = ahead === 0 && behind === 0 && changed === 0
+</script>
+
+<!--
+  Top-aligned rather than centred. Centring puts the content in the middle of
+  a pane that is most of the window tall, so it floats with a screen's worth of
+  nothing above and below it; anchoring it near the top is where the eye
+  already is, having just come from the list.
+-->
+<div class="mx-auto flex max-w-[560px] flex-col gap-[18px] px-[36px] pb-[40px] pt-[56px]">
+  <!-- Where the branch stands -->
+  <div class="flex items-center gap-[11px]">
+    <span class="grid h-[36px] w-[36px] shrink-0 place-items-center rounded-[10px] {{ settled ? 'bg-[#34c759]/12 dark:bg-[#34c759]/18' : 'bg-[#0088ff]/12 dark:bg-[#0088ff]/20' }}">
+      <span class="{{ settled ? 'i-f7-checkmark-alt' : 'i-f7-arrow-branch' }} h-[18px] w-[18px] {{ settled ? 'text-[#248a3d] dark:text-[#5cd97b]' : 'text-[#0068c9] dark:text-[#63b5ff]' }}"></span>
+    </span>
+    <div class="min-w-0">
+      <p class="truncate text-[15px] font-semibold leading-tight">{{ state.branch }}</p>
+      <p class="truncate pt-[2px] text-[12px] opacity-50">{{ position }}</p>
+    </div>
+  </div>
+
+  <!-- What is waiting -->
+  <div class="grid grid-cols-3 gap-[7px]">
+    <div class="rounded-[9px] bg-black/[0.035] px-[11px] py-[9px] dark:bg-white/[0.06]">
+      <p class="text-[19px] font-semibold leading-none tabular-nums">{{ changed }}</p>
+      <p class="pt-[4px] text-[10.5px] opacity-50">{{ changed === 1 ? 'changed file' : 'changed files' }}</p>
+    </div>
+    <div class="rounded-[9px] bg-black/[0.035] px-[11px] py-[9px] dark:bg-white/[0.06]">
+      <p class="text-[19px] font-semibold leading-none tabular-nums">{{ staged }}</p>
+      <p class="pt-[4px] text-[10.5px] opacity-50">selected to commit</p>
+    </div>
+    <div class="rounded-[9px] bg-black/[0.035] px-[11px] py-[9px] dark:bg-white/[0.06]">
+      <p class="text-[19px] font-semibold leading-none tabular-nums">{{ ahead }}</p>
+      <p class="pt-[4px] text-[10.5px] opacity-50">{{ ahead === 1 ? 'commit to push' : 'commits to push' }}</p>
+    </div>
+  </div>
+
+  <!-- What happened recently -->
+  @if (recent.length > 0)
+    <div>
+      <p class="pb-[5px] text-[10.5px] font-semibold uppercase tracking-[0.06em] opacity-40">Recent</p>
+      <div class="overflow-hidden rounded-[9px] border border-black/[0.06] dark:border-white/[0.07]">
+        @foreach (recent as entry)
+          <!--
+            Clickable, and carrying the same `data-row` contract the list pane
+            uses — so the one delegated listener on the document already knows
+            what to do with it and there is no second code path to keep in step.
+          -->
+          <div
+            data-row="{{ entry.hash }}"
+            data-row-kind="commit"
+            class="flex cursor-default items-center gap-[9px] border-b border-black/[0.05] px-[11px] py-[7px] last:border-b-0 hover:bg-black/[0.03] dark:border-white/[0.06] dark:hover:bg-white/[0.05]"
+          >
+            <span class="shrink-0 font-mono text-[10.5px] opacity-40">{{ entry.short }}</span>
+            <span class="min-w-0 flex-1 truncate text-[12px]">{{ entry.subject }}</span>
+            <span class="shrink-0 text-[10.5px] opacity-40">{{ entry.when }}</span>
+          </div>
+        @endforeach
+      </div>
+    </div>
+  @endif
+
+  <p class="text-[10.5px] opacity-35">{{ state.fetched }}@if(state.remote) · {{ state.remote }}@endif</p>
+</div>
