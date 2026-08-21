@@ -69,6 +69,8 @@ export interface CommitSummary {
   branch: string
   /** Nothing to commit — the button is disabled and says so. */
   clean: boolean
+  /** How many files have changed at all, shown on the Changes tab. */
+  changed: number
 }
 
 /**
@@ -276,34 +278,18 @@ export function tintFor(index: number): string {
 }
 
 export function repoSpaces(input: ShellInput): unknown[] {
-  const { session, repos, status, branches: branchList } = input
+  const { session, repos, branches: branchList } = input
 
   return repos.map((repo, index) => {
     const active = repo.root === session.state.repo
     const sections: unknown[] = []
 
     if (active) {
-      sections.push({
-        id: 'views',
-        items: [
-          {
-            id: 'tab:changes',
-            label: 'Changes',
-            icon: 'i-f7-doc-on-doc',
-            iconColor: tintFor(index),
-            count: status.files.length || undefined,
-            active: session.state.tab === 'changes',
-          },
-          {
-            id: 'tab:history',
-            label: 'History',
-            icon: 'i-f7-clock',
-            iconColor: tintFor(index),
-            active: session.state.tab === 'history',
-          },
-        ],
-      })
-
+      // No Changes/History rows here. The list pane already carries them as
+      // tabs, directly above the content they switch, and a second copy in the
+      // sidebar is the same control in two places — one of which is nowhere
+      // near what it changes. The sidebar keeps what is genuinely repository
+      // scope: the branches, and the shortcuts above them.
       const current = branchList.find(branch => branch.current)
       sections.push({
         id: 'branches',
@@ -465,6 +451,7 @@ export function buildShell(input: ShellInput): ShellProps {
       count: staged.size,
       branch: status.branch,
       clean: status.files.length === 0,
+      changed: status.files.length,
     },
     hasRepo: session.state.repo !== null,
     overview,

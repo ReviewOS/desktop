@@ -3,7 +3,7 @@
 // commit box that only the Changes tab has.
 export const tab = $props.tab || 'changes'
 export const items = $props.items || []
-export const summary = $props.summary || { count: 0, branch: '', clean: true }
+export const summary = $props.summary || { count: 0, branch: '', clean: true, changed: 0 }
 export const hasRepo = $props.hasRepo ?? false
 
 export const isChanges = tab === 'changes'
@@ -41,7 +41,7 @@ export const badgeTone = {
         type="button"
         data-tab="changes"
         class="flex-1 rounded-[6px] py-[4px] text-[12px] font-medium transition-all duration-150 {{ isChanges ? 'bg-white text-black shadow-[0_1px_2px_rgba(0,0,0,0.10)] dark:bg-white/16 dark:text-white' : 'opacity-55 hover:opacity-85' }}"
-      >Changes</button>
+      >Changes@if(summary.changed)<span class="ml-[5px] tabular-nums opacity-45">{{ summary.changed }}</span>@endif</button>
       <button
         type="button"
         data-tab="history"

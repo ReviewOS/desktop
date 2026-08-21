@@ -141,9 +141,15 @@ export const windowStyle = shell.windowStyle
       spacePersistKey="reviewos.space"
     >
       <template #header>
+        <!--
+          `native`, not `showWindowControls`. The window is opened with the
+          titlebar hidden, which keeps the platform's own controls — drawing
+          replicas as well put six circles in the corner, three of them live
+          and three of them decoration.
+        -->
         <SidebarHeader
           theme="arc"
-          showWindowControls
+          windowControls="native"
           :title="repoName"
           :actions="[
             { id: 'add-repo', icon: 'i-f7-plus', label: 'Add repository' },
