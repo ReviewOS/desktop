@@ -24,10 +24,10 @@
     "typecheck": "bunx --bun tsc --noEmit -p tsconfig.json"
   },
   "dependencies": {
-    "@stacksjs/components": "^0.2.205",
-    "@stacksjs/desktop": "^0.2.205",
-    "@stacksjs/stx": "^0.2.205",
-    "bun-plugin-stx": "^0.2.205"
+    "@stacksjs/components": "^0.2.206",
+    "@stacksjs/desktop": "^0.2.206",
+    "@stacksjs/stx": "^0.2.206",
+    "bun-plugin-stx": "^0.2.206"
   },
   "devDependencies": {
     "@types/bun": "^1.3.6"
