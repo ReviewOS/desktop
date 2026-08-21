@@ -1,0 +1,38 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      # The toolchain comes from deps.yaml, so the version CI runs is the
+      # version a developer runs — not whatever the runner image happens to
+      # ship. craft is a darwin/GTK binary and is not needed here: nothing in
+      # the suite opens a window.
+      - name: Install pantry
+        run: curl -fsSL https://pantry.sh/install | bash
+
+      - name: Install toolchain and dependencies
+        run: pantry install
+
+      - name: Build the client bundle
+        run: bun scripts/build-client.ts
+
+      - name: Typecheck
+        run: bun tsc --noEmit -p tsconfig.json
+
+      - name: Lint
+        run: bunx --bun pickier lint src scripts test
+
+      - name: Test
+        run: bun test
