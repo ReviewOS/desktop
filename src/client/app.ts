@@ -124,8 +124,11 @@ function wire(): void {
     const row = target.closest<HTMLElement>('[data-row]')
     if (row) {
       const id = row.dataset.row!
-      const isCommit = /^[0-9a-f]{40}$/.test(id)
-      void select(isCommit ? { commit: id } : { path: id })
+      // The kind comes from the server, which rendered the row and therefore
+      // knows. Inferring it from the id's shape — a 40-hex test for a commit —
+      // misreads a file whose path happens to be 40 hex characters, which is
+      // exactly what a content-addressed fixture is named.
+      void select(row.dataset.rowKind === 'commit' ? { commit: id } : { path: id })
       return
     }
 
@@ -177,13 +180,12 @@ function wire(): void {
     event.preventDefault()
 
     const data = new FormData(form)
+    // The set of paths is deliberately absent. The server holds the checked
+    // set and reads it from there; accepting one from the page would make a
+    // stale view authoritative over the state its own checkboxes came from.
     void run('/api/commit', {
       summary: String(data.get('summary') ?? ''),
       description: String(data.get('description') ?? ''),
-      // The server holds the checked set, so it is not sent — sending it would
-      // make the page's idea of the selection authoritative over the server's,
-      // and the two would disagree the first time a render was skipped.
-      paths: undefined,
     })
   })
 

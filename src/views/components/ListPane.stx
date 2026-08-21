@@ -44,6 +44,7 @@ export const commitLabel = summary.count === 1
       @foreach (items as item)
         <div
           data-row="{{ item.id }}"
+          data-row-kind="{{ isChanges ? 'file' : 'commit' }}"
           class="group flex w-full items-center gap-2 px-2.5 py-[7px] text-left {{ item.selected ? 'bg-[#0088ff] text-white' : 'hover:bg-black/4 dark:hover:bg-white/6' }}"
         >
           @if (isChanges)

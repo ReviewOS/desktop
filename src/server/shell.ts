@@ -280,7 +280,11 @@ export function repoSpaces(input: ShellInput): unknown[] {
           count: branch.ahead || branch.behind
             ? `${branch.ahead ? `↑${branch.ahead}` : ''}${branch.behind ? `↓${branch.behind}` : ''}`
             : undefined,
-          active: branch.name === current?.name && session.state.tab === 'branches' as Tab,
+          // The checked-out branch, always. The condition here used to also
+          // require `tab === 'branches'`, which is not a member of `Tab` and
+          // only compiled because of a cast — so it was never true and the
+          // current branch never rendered as selected.
+          active: branch.name === current?.name,
         })),
       })
     }
