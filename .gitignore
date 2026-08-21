@@ -3,3 +3,6 @@ pantry/
 dist/
 *.log
 .DS_Store
+
+# stx build state
+.stx/
